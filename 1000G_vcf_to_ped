@@ -1,0 +1,33 @@
+wdir="/data/nephron/vischmid/plink/"
+g_1000_vcf="/data/nephron/vischmid/plink/data_TG/ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/"
+
+for n in {1..22}
+do
+ ulimit -n 4000
+ /apps/well/vcftools/16102015/bin/./vcftools --gzvcf ${g_1000_vcf}ALL.chr${n}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz --plink --chr ${n} --out data_TG/ped_files_1000_genomes/ped_chr_${n} --temp temp
+ echo ${n}
+done
+
+## Post processing of 1000 genomes project data
+raw_ped="/data/nephron/vischmid/plink/data_TG/ped_files_1000_genomes"
+mkdir temp
+
+awk '{ if( $7 =="FIN" || $7 =="GBR"|| $7 =="CEU"|| $7 =="IBS"|| $7 =="TSI") print $1 "\t" $2 }' /data/nephron/vischmid/plink/Plink_input/ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/integrated_call_samples_v2.20130502.ALL.ped> european_individuals.txt
+
+
+for n in {1..22}
+do
+####Print file with duplicated rs number and duplicated porsitons
+ #awk '{ print $2 }' ${raw_ped}/ped_chr_${n}.map | sort | uniq -d > temp/duplicated.txt
+ #awk 'seen[$4]++ {print $2}' ${raw_ped}/ped_chr_${n}.map > temp/duplicated_position.txt
+ #cat temp/duplicated.txt temp/duplicated_position.txt | sort| uniq > final_exclude.txt
+####binary file with only non-duplicated SNPs
+ #/apps/well/plink/1.90b2n/plink --file ${raw_ped}/ped_chr_${n} --exclude final_exclude.txt --make-bed --out temp/no_dup${n}
+####remove all non europeans
+ #/apps/well/plink/1.90b2n/plink --bfile temp/no_dup${n} --keep european_individuals.txt --make-bed --out temp/euro${n}
+ /apps/well/plink/1.90b2n/plink --bfile temp/euro${n} --maf 0.01 --geno 0.1 --make-bed --out /data/nephron/vischmid/plink/filtered_TG/filtered${n}
+print ${n}
+done
+
+
+/apps/well/plink/1.90b2n/plink --bfile /data/nephron/vischmid/plink/filtered_TG/filtered1 --merge-list merge.txt --make-bed --out /data/nephron/vischmid/plink/merged_filtered_TG/merged
